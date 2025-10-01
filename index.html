@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Estrela Rosa Centralizada</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html, body { margin:0; height:100%; overflow:hidden; background:#0b0b0b; }
+    canvas { display:block; }
+    svg { position:absolute; width:0; height:0; pointer-events:none; }
+  </style>
+</head>
+<body>
+
+  <!-- Estrela rosa centralizada no meio do viewBox -->
+  <svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path class="star-path" fill="none" stroke="none"
+      d="M300 80
+         L308 100 L330 100
+         L312 114 L320 136
+         L300 124 L280 136
+         L288 114 L270 100
+         L292 100 Z" />
+  </svg>
+
+  <!-- Three.js (global) -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/build/three.min.js"></script>
+  <!-- OrbitControls -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- GSAP -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+
+  <script>
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 5000);
+    camera.position.set(0, 0, 400);
+
+    const renderer = new THREE.WebGLRenderer({ antialias:true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x050505, 1);
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+
+    const VIEWBOX_W = 600, VIEWBOX_H = 200;
+
+    // ========= Partículas: Estrela Rosa Central =========
+    const starPath = document.querySelector('.star-path');
+    const starLen = starPath.getTotalLength();
+    const starVerts = [];
+    const tlStar = gsap.timeline({ repeat:-1, yoyo:true });
+    const STAR_STEP = 0.5;
+    
+    for (let i = 0; i <= starLen; i += STAR_STEP) {
+      const p = starPath.getPointAtLength(i);
+      const v = new THREE.Vector3(p.x, -p.y, 0);
+      v.x += (Math.random() - 0.5) * 6;
+      v.y += (Math.random() - 0.5) * 6;
+      v.z += (Math.random() - 0.5) * 20;
+      starVerts.push(v);
+
+      tlStar.from(v, {
+        x: VIEWBOX_W/2,
+        y: -VIEWBOX_H/2,
+        z: 0,
+        ease: 'power2.inOut',
+        duration: gsap.utils.random(1.6, 3.0)
+      }, i * 0.002);
+    }
+
+    const starGeom = new THREE.BufferGeometry().setFromPoints(starVerts);
+    const starMat  = new THREE.PointsMaterial({
+      color: 0xff66cc,   // rosa
+      size: 4,           // tamanho visível mas sem “estourar”
+      sizeAttenuation: true,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      depthWrite: false
+    });
+
+    const starPoints = new THREE.Points(starGeom, starMat);
+    // Centralizar no meio do viewBox
+    starPoints.position.x -= VIEWBOX_W/2;
+    starPoints.position.y += VIEWBOX_H/2;
+    scene.add(starPoints);
+
+    // Animação de balanço da cena
+    gsap.fromTo(scene.rotation, { y:-0.2 }, { y:0.2, duration:3, ease:'power2.inOut', repeat:-1, yoyo:true });
+
+    function render() {
+      requestAnimationFrame(render);
+      starGeom.setFromPoints(starVerts);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    render();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth/window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
